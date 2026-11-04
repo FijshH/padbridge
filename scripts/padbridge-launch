@@ -1,0 +1,12 @@
+#!/bin/sh
+# padbridge launcher. Steam launch option for a Windows game run by Bridgeplay:
+#   /Users/<you>/.local/bin/padbridge %command%
+# Bridgeplay's launcher inserts STEAM_DYLD_INSERT_LIBRARIES into the game's Wine
+# processes (it forwards that variable and drops most others), so the library
+# goes in front of whatever Steam put there.
+LIB="$HOME/.local/lib/padbridge.dylib"
+if [ -f "$LIB" ]; then
+  STEAM_DYLD_INSERT_LIBRARIES="$LIB${STEAM_DYLD_INSERT_LIBRARIES:+:$STEAM_DYLD_INSERT_LIBRARIES}"
+  export STEAM_DYLD_INSERT_LIBRARIES
+fi
+exec "$@"

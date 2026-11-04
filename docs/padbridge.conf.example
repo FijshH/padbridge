@@ -1,0 +1,20 @@
+# ~/.config/padbridge/padbridge.conf
+# Read when the game starts. Every key is optional; these are the defaults.
+
+enabled = 1
+
+# What View sends: touchpad, create, mute, ps or none
+view = touchpad
+# HID buttons 3 and 6, for 8BitDo pads that have them
+button3 = create
+button6 = mute
+
+# Rumble
+rumble_strength = 100     # percent, 0-200
+rumble_max = 180          # soft ceiling for strong rumble, 1-255 (255: none)
+rumble_floor = 0          # lowest motor level for any nonzero rumble, 0-200
+rumble_release_ms = 30    # fade-out time for falling levels
+swap_motors = 0
+
+# ~/Library/Logs/padbridge.log: 0 off, 1 events, 2 every input and rumble change
+log = 1
