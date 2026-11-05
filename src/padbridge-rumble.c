@@ -38,15 +38,20 @@ int main(int argc, char **argv) {
         return 2;
     }
     IOHIDManagerRef mgr = IOHIDManagerCreate(kCFAllocatorDefault, 0);
-    int vid = 0x2dc8, pid = 0x3016;
+    // The gamepad interface: asleep, the receiver shows a vendor "IDLE" one instead.
+    int vid = 0x2dc8, pid = 0x3016, page = 1, usage = 5;
     CFNumberRef v = CFNumberCreate(NULL, kCFNumberIntType, &vid), p = CFNumberCreate(NULL, kCFNumberIntType, &pid);
-    const void *keys[] = {CFSTR(kIOHIDVendorIDKey), CFSTR(kIOHIDProductIDKey)}, *vals[] = {v, p};
-    CFDictionaryRef match = CFDictionaryCreate(NULL, keys, vals, 2, &kCFTypeDictionaryKeyCallBacks,
+    CFNumberRef pg = CFNumberCreate(NULL, kCFNumberIntType, &page), u = CFNumberCreate(NULL, kCFNumberIntType, &usage);
+    const void *keys[] = {CFSTR(kIOHIDVendorIDKey), CFSTR(kIOHIDProductIDKey), CFSTR(kIOHIDPrimaryUsagePageKey),
+                          CFSTR(kIOHIDPrimaryUsageKey)},
+               *vals[] = {v, p, pg, u};
+    CFDictionaryRef match = CFDictionaryCreate(NULL, keys, vals, 4, &kCFTypeDictionaryKeyCallBacks,
                                                &kCFTypeDictionaryValueCallBacks);
     IOHIDManagerSetDeviceMatching(mgr, match);
     CFSetRef set = IOHIDManagerCopyDevices(mgr);
     if (!set || !CFSetGetCount(set)) {
-        fprintf(stderr, "8BitDo Ultimate C 2.4G (2dc8:3016) not found. Is the dongle in, pad in D-input?\n");
+        fprintf(stderr, "8BitDo Ultimate C 2.4G (2dc8:3016) not found. Is the dongle in, pad in D-input "
+                        "and awake?\n");
         return 1;
     }
     IOHIDDeviceRef devs[8];

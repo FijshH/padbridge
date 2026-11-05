@@ -38,9 +38,18 @@ reads it with `IOHIDDeviceRegisterInputReportCallback`, and writes it with
 |---|---|
 | vendor, product, version, name | a USB DualSense's (`054c:0ce6`) |
 | report descriptor, report sizes | a genuine DualSense's 337-byte descriptor |
-| input reports | each 8BitDo report translated into a 64-byte DualSense report, and the last state repeated at 250 Hz like a real DualSense |
+| input reports | each 8BitDo report translated into a 64-byte DualSense report, and the last state repeated every 4 ms between them, like a real DualSense's 250 Hz stream |
 | feature reports 05, 09, 20 | calibration, pairing and firmware replies the game's PlayStation code reads |
-| output report 02 (rumble, lightbar) | rumble becomes the 8BitDo's vendor motor report `81 11 04 08` |
+| output report 02 (rumble, lightbar) | rumble, scaled by the game's motor power setting, becomes the 8BitDo's vendor motor report `81 11 04 08`; the rest is accepted and ignored |
+
+Wine's HID thread only hands reports on when its run loop has handled a source, so the 250 Hz
+repeat is a run loop source that a timer signals; a bare timer left repeats queued for up to 10 s.
+
+**Sleep.** After a few idle minutes the pad sleeps and the receiver swaps its gamepad interface for a
+vendor "IDLE" one (same IDs). padbridge leaves the IDLE interface alone and, by default
+(`keep_alive`), keeps the sleep from Wine: the DualSense stays connected with the pad centred, and
+when a button wakes the pad, its new interface takes over the same DualSense. If the new interface
+can't be opened, Wine gets the removal and the pad as a new DualSense, as without `keep_alive`.
 
 The pad itself is untouched, and nothing in Bridgeplay, Wine or the game is modified. Bridgeplay's
 launcher forwards `STEAM_DYLD_INSERT_LIBRARIES` to Wine (and drops most other variables), so the
@@ -97,7 +106,8 @@ Games that only read Xbox controllers won't see a DualSense, so leave the option
 | Menu | Options |
 | Home | PS |
 
-The pad has no touchpad, motion sensors or adaptive triggers. padbridge reports the touchpad as
+The sticks' resting value, 127, becomes a DualSense's 128, with both ends kept. The pad has no
+touchpad, motion sensors or adaptive triggers. padbridge reports the touchpad as
 untouched, the pad as level and still, and the battery as wired and full.
 
 ## Settings
@@ -115,13 +125,17 @@ untouched, the pad as level and still, and the battery as wired and full.
 | `rumble_floor` | `0` | Lowest motor level for any nonzero rumble, 0-200 |
 | `rumble_release_ms` | `30` | How long a falling level takes to fade out |
 | `swap_motors` | `0` | `1` swaps left and right |
+| `keep_alive` | `1` | Keep the DualSense while the pad sleeps (see [How it works](#how-it-works)); `0` lets it disconnect |
 | `log` | `1` | `0` off, `1` events, `2` every input and rumble change |
 
-The log is `~/Library/Logs/padbridge.log`.
+The log is `~/Library/Logs/padbridge.log`. Past 8 MB it moves to `padbridge.log.1` when the game
+starts.
 
 ## Tuning rumble
 
-A DualSense makes a soft tick out of a weak request; the 8BitDo's motors are felt from level 4 of 255,
+The game's own vibration power (a DualSense output field, 100% down to 12.5% in eighths) applies
+first; padbridge logs it when it changes (`game motor power`). Then: a DualSense makes a soft tick
+out of a weak request; the 8BitDo's motors are felt from level 4 of 255,
 so low levels go through unchanged. At full power they get harsh, so strong rumble bends smoothly
 toward `rumble_max` (a `tanh` curve) instead of clipping:
 
@@ -129,8 +143,9 @@ toward `rumble_max` (a `tanh` curve) instead of clipping:
 |---|---|---|---|---|---|---|
 | Motor gets (default) | 4 | 16 | 61 | 110 | 142 | 160 |
 
-Rises land at once; falls fade over `rumble_release_ms`. Motor reports go out at most every 8 ms
-and are refreshed before the receiver's 200 ms timeout while a level is held.
+Rises land at once; a fall from full power fades out over `rumble_release_ms`, by the clock. The
+game's lightbar reports leave the motors as they are. Motor reports go out at most every 8 ms and
+are refreshed before the receiver's 200 ms timeout while a level is held.
 
 To feel the raw motor levels, with the game closed or open:
 
@@ -145,13 +160,20 @@ padbridge-rumble 4 16 32 64 128 255
 | Line | Meaning |
 |---|---|
 | `padbridge … loaded` (from `winedevice`) | The library is in. If missing, check the launch option |
-| `8BitDo … found, presenting it as a DualSense` | The pad was seen. If missing, check D-input and the dongle |
+| `8BitDo … found, presenting it as a DualSense` | The pad was seen. If missing, check D-input and the dongle, and wake the pad |
 | `input opened` | Wine is reading it |
 | `game read feature 05` | The game's PlayStation code took the pad |
+| `8BitDo … gone (asleep?)`, then `… back` | The pad slept and woke; the game kept its DualSense |
 
 `kcd.log` in the game folder then says `CScePad::SetControllerType(), m_ControllerType: DualSense`.
 
-**No rumble.** Try `padbridge-rumble 64`. If that's silent too, replug the dongle.
+With `log = 2`, every Wine process logs `padbridge … inserted`.
+
+**The pad was asleep when the game started.** Wake it: Wine adds it then. If the game doesn't pick it
+up, restart the game with the pad awake.
+
+**No rumble.** Try `padbridge-rumble 64` (the pad must be awake). If that's silent too, replug the
+dongle. If the log shows a low `game motor power`, raise the game's vibration setting.
 
 ## Uninstall
 

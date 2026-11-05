@@ -13,7 +13,7 @@ clang -dynamiclib -arch x86_64 -arch arm64 $CFLAGS -framework CoreFoundation -fr
       -install_name @rpath/padbridge.dylib -o build/padbridge.dylib src/padbridge.c
 clang -arch arm64 -arch x86_64 $CFLAGS -framework CoreFoundation -framework IOKit \
       -o build/padbridge-rumble src/padbridge-rumble.c
-codesign -f -s - build/padbridge.dylib build/padbridge-rumble 2>/dev/null
+codesign -f -s - build/padbridge.dylib build/padbridge-rumble
 [ "${1:-}" = "--no-install" ] && exit 0
 install -m 0644 build/padbridge.dylib "$PREFIX/lib/padbridge.dylib"
 install -m 0755 scripts/padbridge-launch "$PREFIX/bin/padbridge"

@@ -72,8 +72,10 @@ enum {
 // Output report 0x02 offsets (report ID at 0).
 enum {
     DS5_OUT_FLAGS0 = 1,    // 01 rumble emulation, 02 rumble instead of audio haptics
-    DS5_OUT_FLAGS1 = 2,
+    DS5_OUT_FLAGS1 = 2,    // 40 motor power (DS5_OUT_POWER) valid
     DS5_OUT_RUMBLE_RIGHT = 3,  // small, high-frequency motor
     DS5_OUT_RUMBLE_LEFT = 4,   // large, low-frequency motor
+    DS5_OUT_POWER = 37,    // low nibble: rumble power cut, 0-7 in 12.5% steps
+                           // (high nibble: triggers; as DS5Dongle found on hardware)
     DS5_OUT_FLAGS2 = 39,   // 04 improved rumble emulation (firmware 2.24+)
 };
